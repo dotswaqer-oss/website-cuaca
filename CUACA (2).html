@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Cuaca Indonesia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body class="m-0 p-0">
+    <div id="app"></div>
+
+    <script>
+        // Data kota
+        const indonesiaCities = [
+            { name: 'Jakarta', lat: -6.2088, lon: 106.8456, province: 'DKI Jakarta' },
+            { name: 'Surabaya', lat: -7.2575, lon: 112.7521, province: 'Jawa Timur' },
+            { name: 'Bandung', lat: -6.9175, lon: 107.6191, province: 'Jawa Barat' },
+            { name: 'Medan', lat: 3.5952, lon: 98.6722, province: 'Sumatera Utara' },
+            { name: 'Semarang', lat: -6.9667, lon: 110.4167, province: 'Jawa Tengah' },
+            { name: 'Makassar', lat: -5.1477, lon: 119.4327, province: 'Sulawesi Selatan' },
+            { name: 'Palembang', lat: -2.9761, lon: 104.7754, province: 'Sumatera Selatan' },
+            { name: 'Tangerang', lat: -6.1783, lon: 106.6319, province: 'Banten' },
+            { name: 'Depok', lat: -6.4025, lon: 106.7942, province: 'Jawa Barat' },
+            { name: 'Batam', lat: 1.0456, lon: 103.9915, province: 'Kepulauan Riau' },
+            { name: 'Bogor', lat: -6.5971, lon: 106.8060, province: 'Jawa Barat' },
+            { name: 'Yogyakarta', lat: -7.7956, lon: 110.3695, province: 'DI Yogyakarta' }
+        ].sort((a, b) => a.name.localeCompare(b.name));
+
+        let state = {
+            selectedCity: '',
+            searchTerm: '',
+            weatherData: null,
+            forecast: [],
+            loading: false,
+            currentTime: new Date()
+        };
+
+        setInterval(() => {
+            state.currentTime = new Date();
+            render();
+        }, 1000);
+
+        function generateWeatherData(city) {
+            const baseTemp = city.lat < 0 ? 28 : 30;
+            const tempVariation = Math.random() * 6 - 3;
+            const temp = baseTemp + tempVariation;
+            const weatherTypes = [
+                { main: 'Clear', description: 'cerah', icon: '☀' },
+                { main: 'Clouds', description: 'berawan', icon: '☁' },
+                { main: 'Rain', description: 'hujan ringan', icon: '🌧' }
+            ];
+            const weather = weatherTypes[Math.floor(Math.random() * weatherTypes.length)];
+            return {
+                cityInfo: city,
+                main: { temp: Math.round(temp), humidity: 70 },
+                weather: [weather]
+            };
+        }
+
+        function generateForecastData(baseTemp) {
+            const forecasts = [];
+            const weatherTypes = [
+                { main: 'Clear', description: 'cerah', icon: '☀' },
+                { main: 'Clouds', description: 'berawan', icon: '☁' },
+                { main: 'Rain', description: 'hujan ringan', icon: '🌧' }
+            ];
+            for (let i = 1; i <= 5; i++) {
+                const date = new Date();
+                date.setDate(date.getDate() + i);
+                const weather = weatherTypes[Math.floor(Math.random() * weatherTypes.length)];
+                const dayTemp = baseTemp + (Math.random() * 4 - 2);
+                forecasts.push({
+                    dt: Math.floor(date.getTime() / 1000),
+                    main: { temp: Math.round(dayTemp) },
+                    weather: [weather]
+                });
+            }
+            return forecasts;
+        }
+
+        function fetchWeather(city) {
+            state.loading = true;
+            render();
+            setTimeout(() => {
+                const simData = generateWeatherData(city);
+                state.weatherData = simData;
+                state.forecast = generateForecastData(simData.main.temp);
+                state.loading = false;
+                render();
+            }, 800);
+        }
+
+        function getBackgroundGradient() {
+            return 'from-pink-500 via-purple-600 to-gray-800';
+        }
+
+        function formatDate(timestamp) {
+            return new Date(timestamp * 1000).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' });
+        }
+
+        function render() {
+            const filteredCities = indonesiaCities.filter(city =>
+                city.name.toLowerCase().includes(state.searchTerm.toLowerCase()) ||
+                city.province.toLowerCase().includes(state.searchTerm.toLowerCase())
+            );
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <div class="min-h-screen bg-gradient-to-br ${getBackgroundGradient()} transition-all duration-1000 p-4 md:p-8">
+                    <div class="max-w-5xl mx-auto">
+                        <div class="text-center mb-8">
+                            <h1 class="text-5xl font-bold text-pink-100 mb-2">Cuaca Indonesia</h1>
+                            <p class="text-pink-200">Prakiraan cuaca seluruh Indonesia</p>
+                            <p class="text-gray-300 text-sm mt-2">${state.currentTime.toLocaleString('id-ID')}</p>
+                        </div>
+
+                        <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 mb-8 shadow-lg border border-white/20">
+                            <input 
+                                type="text" 
+                                id="searchInput"
+                                placeholder="Cari kota..."
+                                value="${state.searchTerm}"
+                                class="w-full p-3 rounded-xl text-pink-100 bg-purple-900/30 border border-purple-300 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-400"
+                            />
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6 max-h-64 overflow-y-auto custom-scrollbar">
+                                ${filteredCities.map(city => `
+                                    <button 
+                                        onclick="selectCity('${city.name}')"
+                                        class="p-3 rounded-xl ${
+                                            state.selectedCity === city.name
+                                            ? 'bg-pink-200 text-purple-900'
+                                            : 'bg-purple-700/40 text-pink-100 hover:bg-pink-500/40'
+                                        } transition-all"
+                                    >
+                                        <div class="font-bold text-sm">${city.name}</div>
+                                        <div class="text-xs opacity-80">${city.province}</div>
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        ${state.loading ? `
+                            <div class="text-center py-20">
+                                <div class="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-pink-200"></div>
+                                <p class="text-pink-100 mt-4 text-xl">Memuat data cuaca...</p>
+                            </div>
+                        ` : ''}
+
+                        ${state.weatherData && !state.loading ? `
+                            <div class="bg-white/10 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/20 text-center text-pink-100">
+                                <h2 class="text-4xl font-bold mb-2">${state.weatherData.cityInfo.name}</h2>
+                                <p class="text-pink-200 mb-6">${state.weatherData.cityInfo.province}</p>
+                                <div class="text-7xl mb-4">${state.weatherData.weather[0].icon}</div>
+                                <p class="text-5xl font-bold mb-2">${state.weatherData.main.temp}°C</p>
+                                <p class="text-xl text-gray-200 capitalize mb-6">${state.weatherData.weather[0].description}</p>
+                                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                                    ${state.forecast.map(day => `
+                                        <div class="bg-purple-800/30 rounded-xl p-4 text-center hover:bg-pink-500/30 transition-all">
+                                            <p class="font-semibold mb-1">${formatDate(day.dt)}</p>
+                                            <div class="text-4xl mb-2">${day.weather[0].icon}</div>
+                                            <p class="capitalize mb-1 text-gray-200">${day.weather[0].description}</p>
+                                            <p class="font-bold text-pink-100">${day.main.temp}°C</p>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                        
+                        <div class="text-center mt-12 text-gray-300 text-sm">
+                            <p>PASKALIS FAJAR APRIANTO</p>
+                            <p>© 2025 Aplikasi Cuaca Indonesia</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    state.searchTerm = e.target.value;
+                    render();
+                });
+            }
+        }
+
+        function selectCity(cityName) {
+            const city = indonesiaCities.find(c => c.name === cityName);
+            if (city) {
+                state.selectedCity = cityName;
+                fetchWeather(city);
+            }
+        }
+
+        render();
+    </script>
+</body>
+</html>
